@@ -1,3 +1,7 @@
+import android.os.Build.SERIAL
+import android.util.Base64
+import br.com.windel.pay.BuildConfig.WINDEL_PAY_HOST
+import br.com.windel.pay.BuildConfig.WINDEL_PAY_API_KEY
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
@@ -7,21 +11,29 @@ import br.com.windel.pay.enums.EventsEnum.EVENT_PROCESSING
 import br.com.windel.pay.enums.EventsEnum.EVENT_SUCCESS
 import br.com.windel.pay.enums.EventsEnum.EVENT_FAILED
 import br.com.windel.pay.enums.EventsEnum.EVENT_CANCELED
+import com.google.gson.JsonObject
+
+
 class PaymentClient {
     private lateinit var socket: Socket
     private lateinit var onConnect: Emitter.Listener
+    private lateinit var onDisconnect: Emitter.Listener
     private lateinit var onPay: Emitter.Listener
-
+    val serialNumber = SERIAL
     init {
         try {
             val options = IO.Options()
             options.forceNew = true
             options.reconnection = true
+            val tokenJson =  JsonObject();
+            tokenJson.addProperty("clientTerminal", serialNumber)
+            tokenJson.addProperty("apiKey", WINDEL_PAY_API_KEY)
+            val tokenBase64 = Base64.encode(tokenJson.toString().toByteArray((Charsets.UTF_8)), Base64.DEFAULT)
             options.auth = mapOf(
-                "token" to "terminal1"
+                "token" to String(tokenBase64, Charsets.UTF_8),
             )
 
-            socket = IO.socket("http://192.168.1.50:8080/payments", options)
+            socket = IO.socket( WINDEL_PAY_HOST, options)
         } catch (e: URISyntaxException) {
             e.printStackTrace()
         }
@@ -33,9 +45,7 @@ class PaymentClient {
 
         //DEFAULT EVENTS
         socket.on(Socket.EVENT_CONNECT, this.onConnect)
-        socket.on(Socket.EVENT_DISCONNECT){
-            println("Desconectado do servidor WebSocket")
-        }
+        socket.on(Socket.EVENT_DISCONNECT, this.onDisconnect)
 
         //PAYMENT_EVENTS
         socket.on(EVENT_PAY.value, this.onPay)
@@ -47,6 +57,10 @@ class PaymentClient {
 
     fun onConnectionEstabilshed(event: Emitter.Listener){
         this.onConnect = event
+    }
+
+    fun onDisconnect(event: Emitter.Listener){
+        this.onDisconnect = event
     }
 
     fun onReceivePay(onPay: Emitter.Listener){

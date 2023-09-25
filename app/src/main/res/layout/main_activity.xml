@@ -45,7 +45,7 @@
         android:layout_marginStart="10dp"
         android:layout_marginTop="32dp"
         android:layout_marginEnd="10dp"
-        android:text="Aguardando Pagamento"
+        android:text="Aguardando Conexão"
         android:textAlignment="center"
         android:textColor="#373737"
         android:textSize="24sp"

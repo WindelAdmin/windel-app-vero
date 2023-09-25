@@ -7,6 +7,10 @@ android {
     namespace = "br.com.windel.pay"
     compileSdk = 33
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = "br.com.windel.pay"
         minSdk = 25
@@ -22,11 +26,17 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            buildConfigField("String", "WINDEL_PAY_HOST", "\"http://192.168.1.169:3333/payments\"")
+            buildConfigField("String", "WINDEL_PAY_API_KEY", "\"zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF\"")
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            buildConfigField("String", "WINDEL_PAY_HOST", "\"http://192.168.1.169:3333/payments\"")
+            buildConfigField("String", "WINDEL_PAY_API_KEY", "\"zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF\"")
         }
     }
     compileOptions {
