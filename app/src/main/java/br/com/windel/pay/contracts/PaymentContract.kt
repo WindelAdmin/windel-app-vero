@@ -4,25 +4,35 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContract
+import br.com.windel.pay.Utils
+import br.com.windel.pay.data.DataPayment
+import br.com.windel.pay.data.DataPaymentVero
+import br.com.windel.pay.enums.ItentEnum.VERO_PAGAR
 
-class PaymentContract : ActivityResultContract<Pair<Number, String>, DataPaymentVero>() {
-    private val INTENT_PAGAR = "br.com.execucao.PAGAR"
-    val VALOR_TRANSACAO = "VALOR"
+class PaymentContract : ActivityResultContract<DataPayment, DataPaymentVero>() {
+    private val veroIntentPagar: String = VERO_PAGAR.value
+    private val valorTransacao: String = "VALOR"
 
-    override fun createIntent(context: Context, input: Pair<Number, String>): Intent {
-        val (valor, transacao) = input
-        val intent = Intent(INTENT_PAGAR)
-        intent.putExtra(VALOR_TRANSACAO, valor)
-        intent.putExtra("TRANSACAO", transacao)
+    override fun createIntent(context: Context, input: DataPayment): Intent {
+        val intent = Intent(veroIntentPagar)
+
+        if (input.transactionValue.isNotEmpty()){
+            intent.putExtra(valorTransacao, Utils().convertToIntVero(input.transactionValue))
+        }
+
+        intent.putExtra("TRANSACAO", input.transactionType)
         return intent
     }
 
-    override fun parseResult(resultCode: Int, intent: Intent?): DataPaymentVero {
-        if (resultCode == Activity.RESULT_OK && intent != null) {
-            val status = intent.getStringExtra("status")
-            return DataPaymentVero(status)
+    override fun parseResult(resultCode: Int, data: Intent?): DataPaymentVero {
+        if (resultCode == Activity.RESULT_OK && data != null) {
+            val auth = data.getStringExtra("AUTORIZACAO")
+            if (auth == null) {
+               return DataPaymentVero("DECLINADA", null)
+            }
+            return DataPaymentVero("OK", data.getStringExtra("VALOR"))
         }else{
-            return DataPaymentVero(status = "ERROR")
+            return DataPaymentVero(status = "ERROR", null)
         }
     }
 }
