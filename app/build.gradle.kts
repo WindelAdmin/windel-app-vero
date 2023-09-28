@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "br.com.windel.pay"
+    namespace = "br.com.windel.pos"
     compileSdk = 33
 
     buildFeatures {
@@ -12,11 +12,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "br.com.windel.pay"
+        applicationId = "br.com.windel.pos"
         minSdk = 25
-        targetSdk = 33
+        this.targetSdk = 25
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -26,8 +26,8 @@ android {
 
     buildTypes {
         release {
-            buildConfigField("String", "WINDEL_PAY_HOST", "\"http://192.168.1.169:3333/payments\"")
-            buildConfigField("String", "WINDEL_PAY_API_KEY", "\"zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF\"")
+            buildConfigField("String", "WINDEL_POS_HOST", "\"http://192.168.1.92:3335/payment-vero\"")
+            buildConfigField("String", "WINDEL_POS_API_KEY", "\"zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF\"")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -35,8 +35,8 @@ android {
             )
         }
         debug {
-            buildConfigField("String", "WINDEL_PAY_HOST", "\"http://192.168.1.169:3333/payments\"")
-            buildConfigField("String", "WINDEL_PAY_API_KEY", "\"zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF\"")
+            buildConfigField("String", "WINDEL_POS_HOST", "\"http://192.168.1.92:3335/payment-vero\"")
+            buildConfigField("String", "WINDEL_POS_API_KEY", "\"zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF\"")
         }
     }
     compileOptions {

@@ -9,6 +9,51 @@
     android:padding="16dp"
     tools:context=".MainActivity">
 
+    <com.airbnb.lottie.LottieAnimationView
+        android:id="@+id/lottieAnimationView"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_marginBottom="10dp"
+        app:layout_constraintBottom_toTopOf="@+id/btnCancel"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:lottie_autoPlay="true"
+        app:lottie_fileName="sua_animacao.json"
+        app:lottie_loop="true"
+        tools:ignore="MissingConstraints" />
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="64dp"
+        android:layout_marginTop="215dp"
+        android:layout_marginEnd="100dp"
+        android:fontFamily="@font/nexa_extra_light"
+        android:text="windel"
+        android:textColor="#0A2751"
+        android:textSize="48sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="@+id/imageView3"
+        app:layout_constraintEnd_toEndOf="@+id/imageView3"
+        app:layout_constraintStart_toStartOf="@+id/imageView3"
+        app:layout_constraintTop_toTopOf="@+id/imageView3" />
+
+    <TextView
+        android:id="@+id/textView3"
+        android:layout_width="wrap_content"
+        android:layout_height="64dp"
+        android:layout_marginStart="150dp"
+        android:layout_marginTop="210dp"
+        android:fontFamily="@font/nex_heavy"
+        android:text="Pos"
+        android:textColor="#0A2751"
+        android:textSize="48sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="@+id/imageView3"
+        app:layout_constraintEnd_toEndOf="@+id/imageView3"
+        app:layout_constraintStart_toStartOf="@+id/imageView3"
+        app:layout_constraintTop_toTopOf="@+id/imageView3" />
+
     <Button
         android:id="@+id/btnCancel"
         android:layout_width="125dp"
@@ -40,12 +85,11 @@
 
     <TextView
         android:id="@+id/lblStatus"
-        android:layout_width="338dp"
-        android:layout_height="106dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:layout_marginStart="10dp"
-        android:layout_marginTop="32dp"
         android:layout_marginEnd="10dp"
-        android:text="Aguardando Conexão"
+        android:text="Aguardando Conexão..."
         android:textAlignment="center"
         android:textColor="#373737"
         android:textSize="24sp"
@@ -54,6 +98,19 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.521"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@+id/imageView3" />
+
+    <ImageView
+        android:id="@+id/imageView3"
+        android:layout_width="366dp"
+        android:layout_height="168dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="175dp"
+        android:cropToPadding="true"
+        app:layout_constraintBottom_toTopOf="@+id/lblStatus"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@mipmap/logo_symbol" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
