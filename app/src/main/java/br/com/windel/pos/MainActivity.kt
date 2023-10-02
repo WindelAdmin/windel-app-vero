@@ -1,13 +1,9 @@
 package br.com.windel.pos
 
 import PaymentGateway
-import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Color
 import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -20,14 +16,12 @@ import br.com.windel.pos.contracts.PaymentContract
 import br.com.windel.pos.data.DataPayment
 import br.com.windel.pos.data.DataPaymentResponse
 import br.com.windel.pos.data.TransactionData
-import br.com.windel.pos.enums.ErrorEnum
 import br.com.windel.pos.enums.ErrorEnum.CONNECTION_ERROR
 import br.com.windel.pos.enums.ErrorEnum.SERVER_ERROR
 import br.com.windel.pos.enums.EventsEnum.EVENT_FAILED
 import br.com.windel.pos.enums.EventsEnum.EVENT_PROCESSING
 import br.com.windel.pos.enums.EventsEnum.EVENT_SUCCESS
 import com.airbnb.lottie.LottieAnimationView
-import com.airbnb.lottie.LottieDrawable
 import com.google.gson.Gson
 
 class MainActivity : AppCompatActivity() {
@@ -37,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var paymentGateway: PaymentGateway
     private lateinit var currentOrderId: String
     private lateinit var lottieAnimationView: LottieAnimationView
+    private var isButtonAction : Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,17 +52,21 @@ class MainActivity : AppCompatActivity() {
         buttonCancel = findViewById(R.id.btnCancel);
 
         val paymentContract = registerForActivityResult(PaymentContract()) { data ->
-            if (data.status === EVENT_SUCCESS.value) {
-                data.data?.orderId = currentOrderId
-                paymentGateway.sendOnSuccess(Gson().toJson(data))
-            } else if (data.status == EVENT_FAILED.value) {
-                data?.data?.terminalSerial = paymentGateway.serialNumber
-                data?.data?.orderId = currentOrderId
-                paymentGateway.sendOnFailed(Gson().toJson(data))
-            } else {
-                data?.data?.terminalSerial = paymentGateway.serialNumber
-                data?.data?.orderId = currentOrderId
-                paymentGateway.sendOnCanceled(Gson().toJson(data))
+
+            if(!isButtonAction){
+                if (data.status === EVENT_SUCCESS.value) {
+                    data.data?.orderId = currentOrderId
+                    paymentGateway.sendOnSuccess(Gson().toJson(data))
+                } else if (data.status == EVENT_FAILED.value) {
+                    data?.data?.terminalSerial = paymentGateway.serialNumber
+                    data?.data?.orderId = currentOrderId
+                    paymentGateway.sendOnFailed(Gson().toJson(data))
+                } else {
+                    data?.data?.terminalSerial = paymentGateway.serialNumber
+                    data?.data?.orderId = currentOrderId
+                    paymentGateway.sendOnCanceled(Gson().toJson(data))
+                }
+                isButtonAction = false
             }
         }
 
@@ -78,19 +77,17 @@ class MainActivity : AppCompatActivity() {
             Thread.sleep(500)
             runOnUiThread {
                 Handler(Looper.getMainLooper()).postDelayed({
-                    lottieAnimationView.setAnimation(R.raw.loading_success)
-                    lottieAnimationView.resumeAnimation()
 
-                    lblStatus.text = "Conexão estabelecida"
-                    lblStatus.setTextColor(Color.parseColor("#1e873a"))
+                        lottieAnimationView.setAnimation(R.raw.loading_success)
+                        lottieAnimationView.resumeAnimation()
+                        lblStatus.text = "Conexão estabelecida"
+                        lblStatus.setTextColor(Color.parseColor("#1e873a"))
 
                     Handler(Looper.getMainLooper()).postDelayed({
-                        lblStatus.text = "Aguardando Pedido de Pagamento"
-                        lblStatus.setTextColor(Color.parseColor("#373737"))
-                        runOnUiThread {
                             lottieAnimationView.setAnimation(R.raw.loading_load)
                             lottieAnimationView.resumeAnimation()
-                        }
+                            lblStatus.text = "Aguardando Pedido de Pagamento"
+                            lblStatus.setTextColor(Color.parseColor("#373737"))
                     }, 600)
                 }, 500)
             }
@@ -99,11 +96,10 @@ class MainActivity : AppCompatActivity() {
         paymentGateway.onConnectError{
             Thread.sleep(500)
             runOnUiThread {
-                lblStatus.text =  if (checkInternetConnection()) SERVER_ERROR.value else CONNECTION_ERROR.value
-                lblStatus.setTextColor(Color.parseColor("#a31a1a"))
                 lottieAnimationView.setAnimation(R.raw.loading_failed)
                 lottieAnimationView.resumeAnimation()
-
+                lblStatus.text =  if (checkInternetConnection()) SERVER_ERROR.value else CONNECTION_ERROR.value
+                lblStatus.setTextColor(Color.parseColor("#a31a1a"))
             }
         }
 
@@ -137,7 +133,8 @@ class MainActivity : AppCompatActivity() {
         //UI EVENTS
         buttonCreatePayment.setOnClickListener {
             try {
-                paymentContract.launch(DataPayment("", "123", 0, null, null, null, ""))
+                isButtonAction = true
+                paymentContract.launch(DataPayment(null, "123", null, null, null, null, ""))
             } catch (e: Exception) {
                 Log.e(this.javaClass.name, e.message.toString())
             }
@@ -158,16 +155,20 @@ class MainActivity : AppCompatActivity() {
         val isConnected = networkInfo != null && networkInfo.isConnected
 
         if (isConnected) {
-            lblStatus.text = "Aguardando conexão..."
-            lblStatus.setTextColor(Color.parseColor("#373737"))
-            lottieAnimationView.setAnimation(R.raw.loading_load)
-            lottieAnimationView.resumeAnimation()
+            runOnUiThread {
+                lblStatus.text = "Aguardando conexão..."
+                lblStatus.setTextColor(Color.parseColor("#373737"))
+                lottieAnimationView.setAnimation(R.raw.loading_load)
+                lottieAnimationView.resumeAnimation()
+            }
             return true
         } else {
-            lblStatus.text = CONNECTION_ERROR.value
-            lblStatus.setTextColor(Color.parseColor("#a31a1a"))
-            lottieAnimationView.setAnimation(R.raw.loading_failed)
-            lottieAnimationView.resumeAnimation()
+            runOnUiThread {
+                lblStatus.text = CONNECTION_ERROR.value
+                lblStatus.setTextColor(Color.parseColor("#a31a1a"))
+                lottieAnimationView.setAnimation(R.raw.loading_failed)
+                lottieAnimationView.resumeAnimation()
+            }
             return false
         }
     }

@@ -1,7 +1,7 @@
 package br.com.windel.pos.data
 
 data class DataPayment(
-    val transactionValue: String,
+    val transactionValue: String?,
     val transactionType: String,
     val installments: Int?,
     val nsu: String?,

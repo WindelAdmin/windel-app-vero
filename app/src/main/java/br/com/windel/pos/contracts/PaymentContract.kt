@@ -32,7 +32,7 @@ class PaymentContract : ActivityResultContract<DataPayment, DataPaymentResponse>
 
         intent.putExtra(TRANSACTION_LABEL.value, transactionData.transactionType)
 
-        if (transactionData.transactionValue.isNotEmpty()){
+        if (transactionData.transactionValue?.isNotEmpty() == true){
             intent.putExtra(TRANSACTION_VALUE_LABEL.value, Utils().convertToIntVero(transactionData.transactionValue))
         }
 

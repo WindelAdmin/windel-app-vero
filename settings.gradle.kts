@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Windel Pay"
+rootProject.name = "Windel Pos"
 include(":app")
