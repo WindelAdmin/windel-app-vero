@@ -1,8 +1,8 @@
+
 import android.os.Build.SERIAL
 import android.util.Base64
 import br.com.windel.pos.BuildConfig.WINDEL_POS_API_KEY
 import br.com.windel.pos.BuildConfig.WINDEL_POS_HOST
-import br.com.windel.pos.enums.EventsEnum
 import br.com.windel.pos.enums.EventsEnum.EVENT_CANCELED
 import br.com.windel.pos.enums.EventsEnum.EVENT_FAILED
 import br.com.windel.pos.enums.EventsEnum.EVENT_PAY
@@ -14,13 +14,11 @@ import io.socket.client.Socket
 import io.socket.emitter.Emitter
 import java.net.URISyntaxException
 
-
 class PaymentGateway {
     private lateinit var socket: Socket
     private lateinit var onConnect: Emitter.Listener
     private lateinit var onConnectError: Emitter.Listener
     private lateinit var onPay: Emitter.Listener
-    private lateinit var onErrorAuth: Emitter.Listener
     val serialNumber = SERIAL
 
     init {
