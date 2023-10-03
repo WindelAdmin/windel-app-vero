@@ -3,6 +3,11 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val apiUrl = "http://windelweb.windel.com.br"
+val apiUrlHomolog = "http://windelweb.windel.com.br"
+val port = 3333
+val socketName = "payment-vero"
+val apiKey = "zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF"
 android {
     namespace = "br.com.windel.pos"
     compileSdk = 33
@@ -26,8 +31,8 @@ android {
 
     buildTypes {
         release {
-            buildConfigField("String", "WINDEL_POS_HOST", "\"http://windelweb.windel.com.br:3333/payment-vero\"")
-            buildConfigField("String", "WINDEL_POS_API_KEY", "\"zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF\"")
+            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiUrl:$port/$socketName\"")
+            buildConfigField("String", "WINDEL_POS_API_KEY", "\"$apiKey\"")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -35,8 +40,8 @@ android {
             )
         }
         debug {
-            buildConfigField("String", "WINDEL_POS_HOST", "\"http://192.168.1.169:3333/payment-vero\"")
-            buildConfigField("String", "WINDEL_POS_API_KEY", "\"zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF\"")
+            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiUrlHomolog:$port/$socketName\"")
+            buildConfigField("String", "WINDEL_POS_API_KEY", "\"$apiKey\"")
         }
     }
     compileOptions {
