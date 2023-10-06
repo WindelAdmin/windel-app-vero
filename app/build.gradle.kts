@@ -21,7 +21,7 @@ android {
         applicationId = "br.com.windel.pos"
         minSdk = 25
         this.targetSdk = 25
-        versionCode = 1
+        versionCode = 2
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
