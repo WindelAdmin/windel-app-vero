@@ -11,24 +11,26 @@ import br.com.windel.pos.data.TransactionData
 import br.com.windel.pos.enums.EventsEnum.EVENT_CANCELED
 import br.com.windel.pos.enums.EventsEnum.EVENT_FAILED
 import br.com.windel.pos.enums.EventsEnum.EVENT_SUCCESS
-import br.com.windel.pos.enums.ItentEnum.AUTHORIZATION_LABEL
-import br.com.windel.pos.enums.ItentEnum.DAY_LABEL
-import br.com.windel.pos.enums.ItentEnum.ERROR_LABEL
-import br.com.windel.pos.enums.ItentEnum.EXPIRATION_DATE_LABEL
-import br.com.windel.pos.enums.ItentEnum.FLAG_LABEL
-import br.com.windel.pos.enums.ItentEnum.INSTALLMENTS_LABEL
-import br.com.windel.pos.enums.ItentEnum.NSU_LABEL
-import br.com.windel.pos.enums.ItentEnum.PRINT_VOUCHER
-import br.com.windel.pos.enums.ItentEnum.SERIAL_LABEL
-import br.com.windel.pos.enums.ItentEnum.TRANSACTION_LABEL
-import br.com.windel.pos.enums.ItentEnum.TRANSACTION_VALUE_LABEL
-import br.com.windel.pos.enums.ItentEnum.VERO_PACKAGE
+import br.com.windel.pos.enums.IntentEnum.AUTHORIZATION_LABEL
+import br.com.windel.pos.enums.IntentEnum.DAY_LABEL
+import br.com.windel.pos.enums.IntentEnum.ERROR_LABEL
+import br.com.windel.pos.enums.IntentEnum.EXPIRATION_DATE_LABEL
+import br.com.windel.pos.enums.IntentEnum.FLAG_LABEL
+import br.com.windel.pos.enums.IntentEnum.INSTALLMENTS_LABEL
+import br.com.windel.pos.enums.IntentEnum.NSU_LABEL
+import br.com.windel.pos.enums.IntentEnum.PRINT_VOUCHER
+import br.com.windel.pos.enums.IntentEnum.SERIAL_LABEL
+import br.com.windel.pos.enums.IntentEnum.TRANSACTION_LABEL
+import br.com.windel.pos.enums.IntentEnum.TRANSACTION_VALUE_LABEL
+import br.com.windel.pos.enums.IntentEnum.VERO_PACKAGE
 
 class PaymentContract : ActivityResultContract<DataPayment, DataPaymentResponse>() {
-    private val veroIntentPagar: String = VERO_PACKAGE.value
-
+    var intentIsActive = false
     override fun createIntent(context: Context, transactionData: DataPayment): Intent {
-        val intent = Intent(veroIntentPagar)
+
+        intentIsActive = true;
+
+        val intent = Intent(VERO_PACKAGE.value)
 
         intent.putExtra(TRANSACTION_LABEL.value, transactionData.transactionType)
 
@@ -54,7 +56,6 @@ class PaymentContract : ActivityResultContract<DataPayment, DataPaymentResponse>
     }
 
     override fun parseResult(resultCode: Int, data: Intent?): DataPaymentResponse {
-
         if (resultCode == Activity.RESULT_OK && data != null) {
             if (data.getStringExtra(AUTHORIZATION_LABEL.value) == null) {
                 val transcationData = TransactionData()

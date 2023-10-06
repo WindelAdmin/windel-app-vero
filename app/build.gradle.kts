@@ -1,11 +1,12 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-}
+    id("com.google.devtools.ksp") version "1.8.10-1.0.9" apply true}
 
 val apiUrl = "http://windelweb.windel.com.br"
-val apiUrlHomolog = "http://windelweb.windel.com.br"
-val port = 3333
+val apiUrlHomolog = "http://187.72.218.97"
+val port = 3335
+val portHomolog = 3334
 val socketName = "payment-vero"
 val apiKey = "zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF"
 android {
@@ -21,7 +22,7 @@ android {
         minSdk = 25
         this.targetSdk = 25
         versionCode = 1
-        versionName = "0.0.1"
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -40,16 +41,16 @@ android {
             )
         }
         debug {
-            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiUrlHomolog:$port/$socketName\"")
+            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiUrlHomolog:$portHomolog/$socketName\"")
             buildConfigField("String", "WINDEL_POS_API_KEY", "\"$apiKey\"")
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = org.gradle.api.JavaVersion.VERSION_17
+        targetCompatibility = org.gradle.api.JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
     buildFeatures {
         compose = true
@@ -84,6 +85,16 @@ dependencies {
     implementation("io.socket:socket.io-client:2.0.0") {
         exclude(group = "org.json", module = "json")
     }
+
+    val roomVersion = "2.4.1"
+    ksp("androidx.room:room-compiler:2.5.0")
+    implementation("androidx.room:room-runtime:$roomVersion")
+    annotationProcessor("androidx.room:room-compiler:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    implementation("androidx.room:room-rxjava2:$roomVersion")
+    implementation("androidx.room:room-rxjava3:$roomVersion")
+    implementation("androidx.room:room-guava:$roomVersion")
+    implementation("androidx.room:room-paging:2.4.1")
     implementation("com.google.code.gson:gson:2.10.1")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
@@ -92,4 +103,5 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
 }

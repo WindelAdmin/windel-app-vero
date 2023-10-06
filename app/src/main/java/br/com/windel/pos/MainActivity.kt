@@ -12,10 +12,14 @@ import android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import androidx.room.Room
 import br.com.windel.pos.contracts.PaymentContract
 import br.com.windel.pos.data.DataPayment
 import br.com.windel.pos.data.DataPaymentResponse
+import br.com.windel.pos.data.PaymentEntity
 import br.com.windel.pos.data.TransactionData
+import br.com.windel.pos.database.AppDatabase
 import br.com.windel.pos.enums.ErrorEnum.CONNECTION_ERROR
 import br.com.windel.pos.enums.ErrorEnum.SERVER_ERROR
 import br.com.windel.pos.enums.EventsEnum.EVENT_FAILED
@@ -23,15 +27,15 @@ import br.com.windel.pos.enums.EventsEnum.EVENT_PROCESSING
 import br.com.windel.pos.enums.EventsEnum.EVENT_SUCCESS
 import com.airbnb.lottie.LottieAnimationView
 import com.google.gson.Gson
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var buttonCreatePayment: Button
     private lateinit var buttonCancel: Button
     private lateinit var lblStatus: TextView
     private lateinit var paymentGateway: PaymentGateway
     private lateinit var currentOrderId: String
     private lateinit var lottieAnimationView: LottieAnimationView
-    private var isButtonAction : Boolean = false
+    private var socketIsConnected: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,18 +46,20 @@ class MainActivity : AppCompatActivity() {
             FLAG_FULLSCREEN
         )
 
+        lblStatus = findViewById(R.id.lblStatus);
+        buttonCancel = findViewById(R.id.btnCancel);
         lottieAnimationView = findViewById(R.id.lottieAnimationView)
         lottieAnimationView.setAnimation(R.raw.loading_load)
         lottieAnimationView.playAnimation()
 
-        //SET UI COMPONENTS
-        lblStatus = findViewById(R.id.lblStatus);
-        buttonCreatePayment = findViewById(R.id.btnFinish);
-        buttonCancel = findViewById(R.id.btnCancel);
+        val db = Room.databaseBuilder(
+            applicationContext,
+            AppDatabase::class.java, "payments-backup"
+        ).build()
 
         val paymentContract = registerForActivityResult(PaymentContract()) { data ->
 
-            if(!isButtonAction){
+            if(socketIsConnected) {
                 if (data.status === EVENT_SUCCESS.value) {
                     data.data?.orderId = currentOrderId
                     paymentGateway.sendOnSuccess(Gson().toJson(data))
@@ -66,18 +72,67 @@ class MainActivity : AppCompatActivity() {
                     data?.data?.orderId = currentOrderId
                     paymentGateway.sendOnCanceled(Gson().toJson(data))
                 }
-                isButtonAction = false
+            }else{
+                val paymentModel = PaymentEntity(
+                    0,
+                    data.status,
+                    data.data?.terminalSerial,
+                    data.data?.flag,
+                    data.data?.transactionType,
+                    data.data?.authorization,
+                    data.data?.nsu,
+                    currentOrderId,
+                    data.data?.error)
+
+                lifecycleScope.launch {
+                    try {
+                        db.paymentDao().insert(paymentModel)
+                    }catch (err: Exception){
+                        lblStatus.text = err.message.toString()
+                    }
+                }
             }
         }
 
-        //SOCKET
+
         paymentGateway = PaymentGateway();
 
         paymentGateway.onConnectSuccess {
+            socketIsConnected = true
+
+            lifecycleScope.launch {
+                val paymentsPendingToReturn = db.paymentDao().getAll()
+
+                if(paymentsPendingToReturn.isNotEmpty()){
+                    paymentsPendingToReturn.forEach { it
+
+                        val data = DataPaymentResponse(
+                            it.status,
+                            TransactionData(
+                                it?.terminalSerial,
+                                it?.flag,
+                                it?.transactionType,
+                                it?.authorization,
+                                it?.nsu,
+                                it?.orderId,
+                                it?.error)
+                        )
+
+                        if (it.status == EVENT_SUCCESS.value) {
+                            paymentGateway.sendOnSuccess(Gson().toJson(data))
+                        } else if (it.status == EVENT_FAILED.value) {
+                            paymentGateway.sendOnFailed(Gson().toJson(data))
+                        }else {
+                            paymentGateway.sendOnCanceled(Gson().toJson(data))
+                        }
+                        db.paymentDao().delete(it)
+                    }
+                }
+            }
+
             Thread.sleep(500)
             runOnUiThread {
                 Handler(Looper.getMainLooper()).postDelayed({
-
                         lottieAnimationView.setAnimation(R.raw.loading_success)
                         lottieAnimationView.resumeAnimation()
                         lblStatus.text = "Conexão estabelecida"
@@ -94,6 +149,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         paymentGateway.onConnectError{
+            socketIsConnected = false
             Thread.sleep(500)
             runOnUiThread {
                 lottieAnimationView.setAnimation(R.raw.loading_failed)
@@ -129,16 +185,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         paymentGateway.connect()
-
-        //UI EVENTS
-        buttonCreatePayment.setOnClickListener {
-            try {
-                isButtonAction = true
-                paymentContract.launch(DataPayment(null, "123", null, null, null, null, ""))
-            } catch (e: Exception) {
-                Log.e(this.javaClass.name, e.message.toString())
-            }
-        }
 
         buttonCancel.setOnClickListener {
             paymentGateway.disconnect()

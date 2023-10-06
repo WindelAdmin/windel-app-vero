@@ -51,32 +51,18 @@
 
     <Button
         android:id="@+id/btnCancel"
-        android:layout_width="125dp"
+        android:layout_width="200dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="25dp"
+        android:layout_marginEnd="25dp"
         android:layout_marginBottom="5dp"
         android:background="@drawable/rounded_red"
         android:elevation="20dp"
         android:text="@string/exit"
         android:textColor="#FFFFFF"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/btnFinish"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <Button
-        android:id="@+id/btnFinish"
-        android:layout_width="125dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="50dp"
-        android:layout_marginEnd="25dp"
-        android:layout_marginBottom="5dp"
-        android:background="@drawable/rounded_green"
-        android:elevation="20dp"
-        android:text="@string/create_payment"
-        android:textColor="#FFFFFF"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/btnCancel" />
+        app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
         android:id="@+id/lblStatus"

@@ -1,6 +1,6 @@
 package br.com.windel.pos.enums
 
-enum class ItentEnum (val value: String){
+enum class IntentEnum (val value: String){
     VERO_PACKAGE("br.com.execucao.PAGAR"),
     TRANSACTION_VALUE_LABEL("VALOR"),
     TRANSACTION_LABEL("TRANSACAO"),

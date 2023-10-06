@@ -15,7 +15,7 @@ import io.socket.emitter.Emitter
 import java.net.URISyntaxException
 
 class PaymentGateway {
-    private lateinit var socket: Socket
+    lateinit var socket: Socket
     private lateinit var onConnect: Emitter.Listener
     private lateinit var onConnectError: Emitter.Listener
     private lateinit var onPay: Emitter.Listener
