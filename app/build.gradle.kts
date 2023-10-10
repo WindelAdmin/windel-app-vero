@@ -5,7 +5,7 @@ plugins {
 
 val apiUrl = "http://windelweb.windel.com.br"
 val apiUrlHomolog = "http://187.72.218.97"
-val port = 3335
+val port = 3333
 val portHomolog = 3334
 val socketName = "payment-vero"
 val apiKey = "zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF"
@@ -19,9 +19,9 @@ android {
 
     defaultConfig {
         applicationId = "br.com.windel.pos"
-        minSdk = 25
-        this.targetSdk = 25
-        versionCode = 2
+        minSdk = 22
+        this.targetSdk = 22
+        versionCode = 3
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
