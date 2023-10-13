@@ -34,11 +34,6 @@ android {
         release {
             buildConfigField("String", "WINDEL_POS_HOST", "\"$apiUrl:$port/$socketName\"")
             buildConfigField("String", "WINDEL_POS_API_KEY", "\"$apiKey\"")
-            isMinifyEnabled = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
         }
         debug {
             buildConfigField("String", "WINDEL_POS_HOST", "\"$apiUrlHomolog:$portHomolog/$socketName\"")
@@ -85,6 +80,7 @@ dependencies {
     implementation("io.socket:socket.io-client:2.0.0") {
         exclude(group = "org.json", module = "json")
     }
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.3")
 
     val roomVersion = "2.4.1"
     ksp("androidx.room:room-compiler:2.5.0")
