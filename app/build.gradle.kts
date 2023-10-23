@@ -3,12 +3,14 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp") version "1.8.10-1.0.9" apply true}
 
-val apiUrl = "http://windelweb.windel.com.br"
-val apiUrlHomolog = "http://187.72.218.97"
-val port = 3333
-val portHomolog = 3334
+
+val apiHostProd = ""
+val portProd = ""
+val apiHostHml = ""
+val portHml = ""
+val apiKey = ""
 val socketName = "payment-vero"
-val apiKey = "zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF"
+
 android {
     namespace = "br.com.windel.pos"
     compileSdk = 33
@@ -32,11 +34,11 @@ android {
 
     buildTypes {
         release {
-            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiUrl:$port/$socketName\"")
+            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiHostProd:$portProd/$socketName\"")
             buildConfigField("String", "WINDEL_POS_API_KEY", "\"$apiKey\"")
         }
         debug {
-            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiUrlHomolog:$portHomolog/$socketName\"")
+            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiHostHml:$portHml/$socketName\"")
             buildConfigField("String", "WINDEL_POS_API_KEY", "\"$apiKey\"")
         }
     }
@@ -80,8 +82,6 @@ dependencies {
     implementation("io.socket:socket.io-client:2.0.0") {
         exclude(group = "org.json", module = "json")
     }
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.3")
-
     val roomVersion = "2.4.1"
     ksp("androidx.room:room-compiler:2.5.0")
     implementation("androidx.room:room-runtime:$roomVersion")
