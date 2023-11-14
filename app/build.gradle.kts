@@ -4,11 +4,11 @@ plugins {
     id("com.google.devtools.ksp") version "1.8.10-1.0.9" apply true}
 
 
-val apiHostProd = ""
-val portProd = ""
-val apiHostHml = ""
-val portHml = ""
-val apiKey = ""
+val apiHostProd = "https://windelweb.windel.com.br"
+val portProd = "3333"
+val apiHostHml = "https://windelweb.windel.com.br"
+val portHml = "3333"
+val apiKey = "zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF"
 val socketName = "payment-vero"
 
 android {
@@ -23,8 +23,8 @@ android {
         applicationId = "br.com.windel.pos"
         minSdk = 22
         this.targetSdk = 22
-        versionCode = 3
-        versionName = "1.0"
+        versionCode = 5
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

@@ -4,6 +4,7 @@ import PaymentGateway
 import android.content.Context
 import android.graphics.Color
 import android.net.ConnectivityManager
+import android.os.Build.SERIAL
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -14,6 +15,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.room.Room
+import br.com.execucao.posmp_api.connection.Connectivity
 import br.com.windel.pos.contracts.PaymentContract
 import br.com.windel.pos.data.DataPayment
 import br.com.windel.pos.data.DataPaymentResponse
@@ -25,10 +27,10 @@ import br.com.windel.pos.enums.ErrorEnum.SERVER_ERROR
 import br.com.windel.pos.enums.EventsEnum.EVENT_FAILED
 import br.com.windel.pos.enums.EventsEnum.EVENT_PROCESSING
 import br.com.windel.pos.enums.EventsEnum.EVENT_SUCCESS
+import br.com.windel.pos.gateways.connectWebSocket
 import com.airbnb.lottie.LottieAnimationView
 import com.google.gson.Gson
 import kotlinx.coroutines.launch
-
 class MainActivity : AppCompatActivity() {
     private lateinit var buttonCancel: Button
     private lateinit var lblStatus: TextView
@@ -45,6 +47,13 @@ class MainActivity : AppCompatActivity() {
             FLAG_FULLSCREEN,
             FLAG_FULLSCREEN
         )
+
+        val connectivity = Connectivity(this)
+        connectivity.setAutomaticProxy(true)
+        connectivity.setProxy(true)
+        connectivity.enable();
+
+        connectWebSocket(SERIAL, BuildConfig.WINDEL_POS_API_KEY, BuildConfig.WINDEL_POS_HOST)
 
         lblStatus = findViewById(R.id.lblStatus);
         buttonCancel = findViewById(R.id.btnCancel);

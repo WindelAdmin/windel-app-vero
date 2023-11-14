@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-<domain-config cleartextTrafficPermitted="true">
-    <domain includeSubdomains="true">windelweb.windel.com.br</domain>
+<domain-config>
+    <domain includeSubdomains="true" >windelweb.windel.com.br</domain>
     <domain includeSubdomains="true">187.72.218.97</domain>
 </domain-config>
 </network-security-config>
