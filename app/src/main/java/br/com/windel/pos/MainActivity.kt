@@ -4,7 +4,6 @@ import PaymentGateway
 import android.content.Context
 import android.graphics.Color
 import android.net.ConnectivityManager
-import android.os.Build.SERIAL
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -27,7 +26,6 @@ import br.com.windel.pos.enums.ErrorEnum.SERVER_ERROR
 import br.com.windel.pos.enums.EventsEnum.EVENT_FAILED
 import br.com.windel.pos.enums.EventsEnum.EVENT_PROCESSING
 import br.com.windel.pos.enums.EventsEnum.EVENT_SUCCESS
-import br.com.windel.pos.gateways.connectWebSocket
 import com.airbnb.lottie.LottieAnimationView
 import com.google.gson.Gson
 import kotlinx.coroutines.launch
@@ -50,10 +48,9 @@ class MainActivity : AppCompatActivity() {
 
         val connectivity = Connectivity(this)
         connectivity.setAutomaticProxy(true)
+        connectivity.checkProxy()
         connectivity.setProxy(true)
         connectivity.enable();
-
-        connectWebSocket(SERIAL, BuildConfig.WINDEL_POS_API_KEY, BuildConfig.WINDEL_POS_HOST)
 
         lblStatus = findViewById(R.id.lblStatus);
         buttonCancel = findViewById(R.id.btnCancel);

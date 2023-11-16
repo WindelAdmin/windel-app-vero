@@ -1,7 +1,7 @@
 
 import android.os.Build.SERIAL
 import android.util.Base64
-import br.com.windel.pos.BuildConfig.WINDEL_POS_API_KEY
+import br.com.windel.pos.BuildConfig
 import br.com.windel.pos.enums.EventsEnum.EVENT_CANCELED
 import br.com.windel.pos.enums.EventsEnum.EVENT_FAILED
 import br.com.windel.pos.enums.EventsEnum.EVENT_PAY
@@ -11,8 +11,11 @@ import com.google.gson.JsonObject
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
+import io.socket.engineio.client.transports.Polling
+import io.socket.engineio.client.transports.WebSocket
 import okhttp3.OkHttpClient
 import java.net.URISyntaxException
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
@@ -25,18 +28,12 @@ class PaymentGateway {
     private lateinit var onPay: Emitter.Listener
     val serialNumber = SERIAL
 
-    init {
+    constructor() {
         try {
 
             val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
-                override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {
-                    // Não implementado para confiar em todos os clientes
-                }
-
-                override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {
-                    // Não implementado para confiar em todos os servidores
-                }
-
+                override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String){}
+                override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
                 override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> {
                     return arrayOf()
                 }
@@ -47,6 +44,7 @@ class PaymentGateway {
 
             val okHttpClient = OkHttpClient.Builder()
                 .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
+                .readTimeout(1, TimeUnit.DAYS)
                 .build()
 
             val options = IO.Options()
@@ -54,10 +52,11 @@ class PaymentGateway {
             options.reconnection = true
             options.callFactory = okHttpClient
             options.webSocketFactory = okHttpClient
+            options.transports = arrayOf(WebSocket.NAME, Polling.NAME)
 
             val tokenJson = JsonObject();
             tokenJson.addProperty("clientTerminal", serialNumber)
-            tokenJson.addProperty("apiKey", WINDEL_POS_API_KEY)
+            tokenJson.addProperty("apiKey", BuildConfig.WINDEL_POS_API_KEY)
 
             val tokenBase64 =
                 Base64.encode(tokenJson.toString().toByteArray((Charsets.UTF_8)), Base64.DEFAULT)
@@ -65,12 +64,11 @@ class PaymentGateway {
                 "token" to String(tokenBase64, Charsets.UTF_8),
             )
 
-            //socket = IO.socket(WINDEL_POS_HOST, options)
+            socket = IO.socket(BuildConfig.WINDEL_POS_HOST, options)
         } catch (e: URISyntaxException) {
             e.printStackTrace()
         }
     }
-
     fun connect() {
         socket.connect()
 
