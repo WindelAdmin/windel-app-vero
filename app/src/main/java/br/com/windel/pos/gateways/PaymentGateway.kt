@@ -11,8 +11,6 @@ import com.google.gson.JsonObject
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
-import io.socket.engineio.client.transports.Polling
-import io.socket.engineio.client.transports.WebSocket
 import okhttp3.OkHttpClient
 import java.net.URISyntaxException
 import java.util.concurrent.TimeUnit
@@ -45,6 +43,7 @@ class PaymentGateway {
             val okHttpClient = OkHttpClient.Builder()
                 .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
                 .readTimeout(1, TimeUnit.DAYS)
+                .connectTimeout(10, TimeUnit.SECONDS)
                 .build()
 
             val options = IO.Options()
@@ -52,7 +51,6 @@ class PaymentGateway {
             options.reconnection = true
             options.callFactory = okHttpClient
             options.webSocketFactory = okHttpClient
-            options.transports = arrayOf(WebSocket.NAME, Polling.NAME)
 
             val tokenJson = JsonObject();
             tokenJson.addProperty("clientTerminal", serialNumber)
