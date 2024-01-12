@@ -11,12 +11,10 @@ import com.google.gson.JsonObject
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
+import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import java.net.URISyntaxException
 import java.util.concurrent.TimeUnit
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
 
 
 class PaymentGateway {
@@ -28,22 +26,14 @@ class PaymentGateway {
 
     constructor() {
         try {
-
-            val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
-                override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String){}
-                override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
-                override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> {
-                    return arrayOf()
-                }
-            })
-
-            val sslContext = SSLContext.getInstance("TLS")
-            sslContext.init(null, trustAllCerts, null)
+            val connectionPool = ConnectionPool(5, 1, TimeUnit.DAYS)
 
             val okHttpClient = OkHttpClient.Builder()
-                .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
                 .readTimeout(1, TimeUnit.DAYS)
-                .connectTimeout(10, TimeUnit.SECONDS)
+                .connectTimeout(1, TimeUnit.DAYS)
+                .callTimeout(1, TimeUnit.DAYS)
+                .writeTimeout(1, TimeUnit.DAYS)
+                .connectionPool(connectionPool)
                 .build()
 
             val options = IO.Options()
