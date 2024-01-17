@@ -3,11 +3,12 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp") version "1.8.10-1.0.9" apply true}
 
-
-val apiHostProd = "https://windelweb.windel.com.br"
+val apiHostProd = "http://windelweb.windel.com.br"
 val portProd = "3333"
-val apiHostHml = "https://windelweb.windel.com.br"
-val portHml = "3333"
+val apiHostHml = "http://homologacao.windel.com.br"
+val portHml = "3002"
+val apiHostDev = "http://192.168.1.82"
+val portDev = "3334"
 val apiKey = "zOds60ZPbh4iHzMImrXafcDMvBi9RCMiJtOjTXiFbwtTFAoUBbEDrNCiKIbiqLUKlemc7Sa4OEMGvcfDu1BzGlqme4yfDR9yVbH1jfUqnysSabetplGY5DLAODtbHTmF"
 val socketName = "payment-vero"
 
@@ -23,8 +24,8 @@ android {
         applicationId = "br.com.windel.pos"
         minSdk = 22
         this.targetSdk = 22
-        versionCode = 5
-        versionName = "1.1"
+        versionCode = 9
+        versionName = "1.2.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -34,11 +35,11 @@ android {
 
     buildTypes {
         release {
-            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiHostProd:$portProd/$socketName\"")
+            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiHostProd:$portProd\"")
             buildConfigField("String", "WINDEL_POS_API_KEY", "\"$apiKey\"")
         }
         debug {
-            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiHostHml:$portHml/$socketName\"")
+            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiHostHml:$portHml\"")
             buildConfigField("String", "WINDEL_POS_API_KEY", "\"$apiKey\"")
         }
     }
@@ -82,6 +83,7 @@ dependencies {
     implementation("io.socket:socket.io-client:2.0.0") {
         exclude(group = "org.json", module = "json")
     }
+    implementation("com.rabbitmq:amqp-client:5.20.0")
     val roomVersion = "2.4.1"
     ksp("androidx.room:room-compiler:2.5.0")
     implementation("androidx.room:room-runtime:$roomVersion")
