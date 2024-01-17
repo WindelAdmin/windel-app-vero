@@ -162,10 +162,17 @@ class MainActivity : AppCompatActivity() {
                             .add("orderId", dataPayment?.data?.orderId.orEmpty())
                             .build())
                         .build()
-                else
-                    Request.Builder()
-                        .url("${BuildConfig.WINDEL_POS_HOST}/gateway-vero/order/${currentOrderId}/${dataPayment.status}")
+                else if (dataPayment.status === "failed") Request.Builder()
+                    .url("${BuildConfig.WINDEL_POS_HOST}/gateway-vero/order/${currentOrderId}/failed")
+                    .post(FormBody.Builder().
+                        add("error", dataPayment.data?.error.orEmpty())
                         .build()
+                    )
+                    .build()
+            else Request.Builder()
+                    .url("${BuildConfig.WINDEL_POS_HOST}/gateway-vero/order/${currentOrderId}/${dataPayment.status}")
+                    .build()
+
 
             httpClient.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
