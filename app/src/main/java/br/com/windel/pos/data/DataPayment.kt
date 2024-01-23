@@ -7,5 +7,6 @@ data class DataPayment(
     val nsu: String?,
     val dayOfMonth: Int?,
     val expirationDate: Int?,
-    val orderId: String
+    val orderId: String,
+    val status: String
 )

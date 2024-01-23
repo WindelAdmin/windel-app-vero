@@ -9,7 +9,7 @@ import br.com.windel.pos.data.PaymentEntity
 @Dao
 interface PaymentResponseDao {
     @Query("SELECT * FROM payments")
-    suspend fun getAll(): List<PaymentEntity>
+    fun getAll(): List<PaymentEntity>
 
     @Insert
     suspend fun insert(vararg payments: PaymentEntity)
