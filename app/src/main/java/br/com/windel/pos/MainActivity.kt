@@ -1,9 +1,11 @@
 package br.com.windel.pos
 
+import android.annotation.SuppressLint
 import android.app.ProgressDialog
 import android.content.Context
 import android.graphics.Color
 import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build.SERIAL
 import android.os.Bundle
 import android.util.Log
@@ -69,11 +71,13 @@ class MainActivity : AppCompatActivity() {
             finish()
         }
 
-        val connectivity = Connectivity(this)
-        connectivity.setAutomaticProxy(true)
-        connectivity.checkProxy()
-        connectivity.setProxy(true)
-        connectivity.enable();
+        if(checkConnectionType(context) == "Mobile") {
+            val connectivity = Connectivity(this)
+            connectivity.setAutomaticProxy(true)
+            connectivity.checkProxy()
+            connectivity.setProxy(true)
+            connectivity.enable();
+        }
 
         checkPayments();
 
@@ -325,6 +329,17 @@ class MainActivity : AppCompatActivity() {
             getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val networkInfo = connectivityManager.activeNetworkInfo
         return networkInfo != null && networkInfo.isConnected
+    }
+
+    @SuppressLint("NewApi")
+    fun checkConnectionType(context: Context): String {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
+        return when {
+            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true -> "Mobile"
+            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true -> "Wi-Fi"
+            else -> "No Active Connection"
+        }
     }
 
     private fun openPaymentProcessing(data: DataPayment) {
