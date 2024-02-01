@@ -9,6 +9,7 @@
     android:padding="16dp"
     tools:context=".MainActivity">
 
+
     <com.airbnb.lottie.LottieAnimationView
         android:id="@+id/lottieAnimationView"
         android:layout_width="250dp"
@@ -71,7 +72,7 @@
         android:layout_marginStart="10dp"
         android:layout_marginEnd="10dp"
         android:layout_marginBottom="150dp"
-        android:text="Aguardando pedido de pagamento..."
+        android:text="Aguardando pedido de pagamento"
         android:textAlignment="center"
         android:textColor="#373737"
         android:textSize="20sp"

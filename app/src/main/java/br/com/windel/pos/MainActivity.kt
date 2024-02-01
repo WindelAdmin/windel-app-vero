@@ -29,10 +29,12 @@ import br.com.windel.pos.enums.ErrorEnum
 import br.com.windel.pos.enums.EventsEnum.EVENT_CANCELED
 import br.com.windel.pos.enums.EventsEnum.EVENT_SUCCESS
 import br.com.windel.pos.gateways.BasicAuthInterceptor
+import com.airbnb.lottie.LottieAnimationView
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
@@ -46,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var buttonCancel: Button
     private lateinit var lblStatus: TextView
     private lateinit var currentOrderId: String
+    private lateinit var lottieAnimationView: LottieAnimationView
     private var httpClient = OkHttpClient.Builder()
         .addInterceptor(BasicAuthInterceptor("d2luZGVsdXNlcg==", "dzFuZDNsQEAyMzIw")).build()
 
@@ -67,28 +70,23 @@ class MainActivity : AppCompatActivity() {
 
         lblStatus = findViewById(R.id.lblStatus);
         buttonCancel = findViewById(R.id.btnCancel);
+        lottieAnimationView = findViewById(R.id.lottieAnimationView)
+        lottieAnimationView.setAnimation(R.raw.loading_load)
+        lottieAnimationView.playAnimation()
+
         buttonCancel.setOnClickListener {
             finish()
         }
 
-        if(checkConnectionType(context) == "Mobile") {
-            val connectivity = Connectivity(this)
-            connectivity.setAutomaticProxy(true)
-            connectivity.checkProxy()
-            connectivity.setProxy(true)
-            connectivity.enable();
-        }
+        val connectivity = Connectivity(this)
+        connectivity.setAutomaticProxy(true)
+        connectivity.checkProxy()
+        connectivity.setProxy(true)
+        connectivity.enable();
 
         checkPayments();
 
         paymentContract = registerForActivityResult(PaymentContract()) { data ->
-            httpClient.dispatcher.cancelAll()
-            onTrimMemory(TRIM_MEMORY_COMPLETE)
-            onTrimMemory(TRIM_MEMORY_BACKGROUND)
-            onTrimMemory(TRIM_MEMORY_RUNNING_LOW)
-            onTrimMemory(TRIM_MEMORY_RUNNING_CRITICAL)
-            onTrimMemory(TRIM_MEMORY_UI_HIDDEN)
-
             if (checkInternetConnection()) {
                 data?.data?.terminalSerial = SERIAL
                 data?.data?.orderId = currentOrderId
@@ -113,11 +111,10 @@ class MainActivity : AppCompatActivity() {
                 .url("${BuildConfig.WINDEL_POS_HOST}/gateway-vero/terminal/${SERIAL}")
                 .build()
 
-            httpClient.dispatcher.cancelAll()
-
             httpClient.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     e.printStackTrace()
+                    call.cancel()
                     runOnUiThread {
                         lblStatus.text = ErrorEnum.SERVER_ERROR.value
                         lblStatus.setTextColor(Color.parseColor("#a31a1a"))
@@ -137,6 +134,7 @@ class MainActivity : AppCompatActivity() {
                     try {
                         if(response.body.contentLength() == 0L)  {
                             response.close()
+                            call.cancel()
                             checkPayments()
                             return
                         }
@@ -147,6 +145,7 @@ class MainActivity : AppCompatActivity() {
 
                         if(data.status == "processando") {
                             response.close()
+                            call.cancel()
                             openPaymentProcessing(data)
                             return
                         }
@@ -160,8 +159,11 @@ class MainActivity : AppCompatActivity() {
                             .build()
 
                         response.close()
+                        call.cancel()
                         httpClient.newCall(requestProcessing).execute().close()
-                        paymentContract.launch(data)
+                        runBlocking {
+                            paymentContract.launch(data)
+                        }
                     } catch (e: Exception) {
                         Log.e(this.javaClass.name, e.message.toString())
                     }
@@ -189,11 +191,13 @@ class MainActivity : AppCompatActivity() {
             httpClient.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     checkPayments()
+                    call.cancel()
                     e.printStackTrace()
                 }
 
                 override fun onResponse(call: Call, response: Response) {
                     response.close()
+                    call.cancel()
                     if (!response.isSuccessful) {
                         Log.e("Error: ", response.message)
                     }
@@ -276,10 +280,13 @@ class MainActivity : AppCompatActivity() {
 
                     httpClient.newCall(request).enqueue(object : Callback {
                         override fun onFailure(call: Call, e: IOException) {
+                            call.cancel()
                             e.printStackTrace()
                         }
 
                         override fun onResponse(call: Call, response: Response) {
+                            response.close()
+                            call.cancel()
                             if (!response.isSuccessful) {
                                 Log.e("Error: ", response.message)
                             }
@@ -367,12 +374,14 @@ class MainActivity : AppCompatActivity() {
                 httpClient.newCall(request).enqueue(object : Callback {
                     override fun onFailure(call: Call, e: IOException) {
                         progressDialog.cancel()
+                        call.cancel()
                         e.printStackTrace()
                         checkPayments()
                     }
 
                     override fun onResponse(call: Call, response: Response) {
                         response.close()
+                        call.cancel()
                         progressDialog.cancel()
                         if (!response.isSuccessful) {
                             throw IOException("Error: $response")
