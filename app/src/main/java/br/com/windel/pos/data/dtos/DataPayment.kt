@@ -1,4 +1,4 @@
-package br.com.windel.pos.data
+package br.com.windel.pos.data.dtos
 
 data class DataPayment(
     val transactionValue: String?,

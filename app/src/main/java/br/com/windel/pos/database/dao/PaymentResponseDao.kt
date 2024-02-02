@@ -4,7 +4,7 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
-import br.com.windel.pos.data.PaymentEntity
+import br.com.windel.pos.data.entities.PaymentEntity
 
 @Dao
 interface PaymentResponseDao {

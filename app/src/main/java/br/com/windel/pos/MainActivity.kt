@@ -1,16 +1,16 @@
 package br.com.windel.pos
 
-import android.annotation.SuppressLint
 import android.app.ProgressDialog
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.os.Build.SERIAL
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.appcompat.app.AlertDialog
@@ -19,10 +19,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.room.Room
 import br.com.execucao.posmp_api.connection.Connectivity
 import br.com.windel.pos.contracts.PaymentContract
-import br.com.windel.pos.data.DataPayment
-import br.com.windel.pos.data.DataPaymentResponse
-import br.com.windel.pos.data.PaymentEntity
-import br.com.windel.pos.data.TransactionData
+import br.com.windel.pos.data.dtos.DataPayment
+import br.com.windel.pos.data.dtos.DataPaymentResponse
+import br.com.windel.pos.data.dtos.TransactionData
+import br.com.windel.pos.data.entities.PaymentEntity
 import br.com.windel.pos.database.AppDatabase
 import br.com.windel.pos.enums.EndpointEnum.GATEWAY_VERO_ORDER
 import br.com.windel.pos.enums.ErrorEnum
@@ -46,6 +46,7 @@ import java.io.IOException
 
 class MainActivity : AppCompatActivity() {
     private lateinit var buttonCancel: Button
+    private lateinit var buttonSettings: ImageButton
     private lateinit var lblStatus: TextView
     private lateinit var currentOrderId: String
     private lateinit var lottieAnimationView: LottieAnimationView
@@ -54,6 +55,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var paymentContract: ActivityResultLauncher<DataPayment>
     private lateinit var context: Context
+    private var manualMode: Boolean = false
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_activity)
@@ -69,7 +71,9 @@ class MainActivity : AppCompatActivity() {
         currentOrderId = ""
 
         lblStatus = findViewById(R.id.lblStatus);
-        buttonCancel = findViewById(R.id.btnCancel);
+        lblStatus.text = ""
+        buttonCancel = findViewById(R.id.buttonExit);
+        buttonSettings = findViewById(R.id.buttonSettings)
         lottieAnimationView = findViewById(R.id.lottieAnimationView)
         lottieAnimationView.setAnimation(R.raw.loading_load)
         lottieAnimationView.playAnimation()
@@ -78,13 +82,18 @@ class MainActivity : AppCompatActivity() {
             finish()
         }
 
+        buttonSettings.setOnClickListener {
+            val intent = Intent(this, SettingsActivity::class.java)
+            startActivityForResult(intent, 1)
+        }
+
         val connectivity = Connectivity(this)
         connectivity.setAutomaticProxy(true)
         connectivity.checkProxy()
         connectivity.setProxy(true)
         connectivity.enable();
 
-        checkPayments();
+        checkModeManual()
 
         paymentContract = registerForActivityResult(PaymentContract()) { data ->
             if (checkInternetConnection()) {
@@ -98,15 +107,27 @@ class MainActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.Main).launch {
             withContext(Dispatchers.IO) {
-                findPayments()
+                assertPayment()
             }
+        }
+    }
+
+    private fun setLottieToManualModel() {
+        runOnUiThread {
+            val layoutParams = lottieAnimationView.layoutParams
+            lottieAnimationView.setAnimation(R.raw.sync_idle)
+            lottieAnimationView.playAnimation()
+            layoutParams.width = 350
+            layoutParams.height = 350
+            lottieAnimationView.layoutParams = layoutParams
+            lblStatus.text = ""
         }
     }
 
     private fun checkPayments() {
         Thread.sleep(3000)
 
-        if(checkInternetConnection()) {
+        if (checkInternetConnection()) {
             val request = Request.Builder()
                 .url("${BuildConfig.WINDEL_POS_HOST}/gateway-vero/terminal/${SERIAL}")
                 .build()
@@ -119,23 +140,25 @@ class MainActivity : AppCompatActivity() {
                         lblStatus.text = ErrorEnum.SERVER_ERROR.value
                         lblStatus.setTextColor(Color.parseColor("#a31a1a"))
                     }
-                    checkPayments()
+                    if (!manualMode) checkPayments() else setLottieToManualModel()
                 }
 
                 override fun onResponse(call: Call, response: Response) {
 
                     runOnUiThread {
-                        lblStatus.text = "Aguardando pedido de pagamento..."
-                        lblStatus.setTextColor(Color.parseColor("#373737"))
+                        if (!manualMode) {
+                            lblStatus.text = "Aguardando pedido de pagamento..."
+                            lblStatus.setTextColor(Color.parseColor("#373737"))
+                        }
                     }
 
                     if (!response.isSuccessful) throw IOException("Unexpected code $response")
 
                     try {
-                        if(response.body.contentLength() == 0L)  {
+                        if (response.body.contentLength() == 0L) {
                             response.close()
                             call.cancel()
-                            checkPayments()
+                            if (!manualMode) checkPayments() else setLottieToManualModel()
                             return
                         }
 
@@ -143,7 +166,7 @@ class MainActivity : AppCompatActivity() {
 
                         currentOrderId = data.orderId
 
-                        if(data.status == "processando") {
+                        if (data.status == "processando") {
                             response.close()
                             call.cancel()
                             openPaymentProcessing(data)
@@ -161,6 +184,7 @@ class MainActivity : AppCompatActivity() {
                         response.close()
                         call.cancel()
                         httpClient.newCall(requestProcessing).execute().close()
+
                         runBlocking {
                             paymentContract.launch(data)
                         }
@@ -170,11 +194,11 @@ class MainActivity : AppCompatActivity() {
                 }
             })
         } else {
-            runOnUiThread{
+            runOnUiThread {
                 lblStatus.text = ErrorEnum.CONNECTION_ERROR.value
                 lblStatus.setTextColor(Color.parseColor("#a31a1a"))
             }
-            checkPayments()
+            if (!manualMode) checkPayments() else setLottieToManualModel()
         }
     }
 
@@ -190,7 +214,7 @@ class MainActivity : AppCompatActivity() {
 
             httpClient.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    checkPayments()
+                    if (!manualMode) checkPayments() else setLottieToManualModel()
                     call.cancel()
                     e.printStackTrace()
                 }
@@ -201,7 +225,7 @@ class MainActivity : AppCompatActivity() {
                     if (!response.isSuccessful) {
                         Log.e("Error: ", response.message)
                     }
-                    checkPayments()
+                    if (!manualMode) checkPayments() else setLottieToManualModel()
                 }
             })
         } catch (e: IOException) {
@@ -244,13 +268,12 @@ class MainActivity : AppCompatActivity() {
             .build()
     }
 
-    private suspend fun findPayments() {
-        val db = Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java, "payments-backup"
-        ).build()
-
+    private suspend fun assertPayment() {
         try {
+            val db = Room.databaseBuilder(
+                applicationContext,
+                AppDatabase::class.java, "payments-backup"
+            ).build()
             val paymentsPendingToReturn = db.paymentDao().getAll()
 
             if (paymentsPendingToReturn.isNotEmpty()) {
@@ -297,7 +320,9 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         } catch (e: IOException) {
-            lblStatus.text = e.message.toString()
+            runOnUiThread {
+                lblStatus.text = e.message.toString()
+            }
             Log.e(this.javaClass.name, e.message.toString())
         }
     }
@@ -306,7 +331,7 @@ class MainActivity : AppCompatActivity() {
 
         val db = Room.databaseBuilder(
             applicationContext,
-            AppDatabase::class.java, "payments-backup"
+            AppDatabase::class.java, "app"
         ).build()
 
         val paymentModel = PaymentEntity(
@@ -324,9 +349,13 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 db.paymentDao().insert(paymentModel)
+                if (!manualMode) checkPayments() else setLottieToManualModel()
             } catch (e: Exception) {
-                lblStatus.text = e.message.toString()
-                Log.e(this.javaClass.name, e.message.toString())
+                runOnUiThread {
+                    if (!manualMode) checkPayments() else setLottieToManualModel()
+                    lblStatus.text = e.message.toString()
+                    Log.e(this.javaClass.name, e.message.toString())
+                }
             }
         }
     }
@@ -338,17 +367,6 @@ class MainActivity : AppCompatActivity() {
         return networkInfo != null && networkInfo.isConnected
     }
 
-    @SuppressLint("NewApi")
-    fun checkConnectionType(context: Context): String {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
-        return when {
-            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true -> "Mobile"
-            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true -> "Wi-Fi"
-            else -> "No Active Connection"
-        }
-    }
-
     private fun openPaymentProcessing(data: DataPayment) {
         runOnUiThread {
             val builder = AlertDialog.Builder(context)
@@ -356,6 +374,7 @@ class MainActivity : AppCompatActivity() {
             builder.setTitle("Ops!")
             builder.setMessage("Você possui um pagamento em aberto, o que deseja fazer?")
             builder.setPositiveButton("Refazer Pagamento") { dialog, which ->
+                setLottieToManualModel()
                 val transcationData = TransactionData()
                 transcationData.terminalSerial = SERIAL
                 transcationData.orderId = currentOrderId
@@ -386,13 +405,60 @@ class MainActivity : AppCompatActivity() {
                         if (!response.isSuccessful) {
                             throw IOException("Error: $response")
                         }
-                        checkPayments()
+                        if (!manualMode) checkPayments() else setLottieToManualModel()
                     }
                 })
             }
 
             val alertDialog: AlertDialog = builder.create()
             alertDialog.show()
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        checkModeManual()
+    }
+
+    fun checkModeManual() {
+        val sharedPreferences = getSharedPreferences("windelConfig", Context.MODE_PRIVATE)
+        manualMode = sharedPreferences.getBoolean("manualMode", false)
+        val layoutParams = lottieAnimationView.layoutParams
+
+        if (!manualMode) {
+            runOnUiThread {
+                lottieAnimationView.setAnimation(R.raw.loading_load)
+                lottieAnimationView.playAnimation()
+                layoutParams.width = 265
+                layoutParams.height = 225
+                lottieAnimationView.layoutParams = layoutParams
+                lblStatus.text = "Aguardando pedido de pagamento..."
+            }
+
+            checkPayments();
+        } else {
+            runOnUiThread {
+                lblStatus.text = ""
+                lottieAnimationView.setAnimation(R.raw.sync_idle)
+                lottieAnimationView.playAnimation()
+                layoutParams.width = 350
+                layoutParams.height = 350
+                lottieAnimationView.layoutParams = layoutParams
+            }
+
+            lottieAnimationView.setOnClickListener {
+                runOnUiThread {
+                    lottieAnimationView.setAnimation(R.raw.sync_loading)
+                    lottieAnimationView.playAnimation()
+                    lblStatus.text = "Buscando pagamento..."
+                }
+
+                CoroutineScope(Dispatchers.Main).launch {
+                    withContext(Dispatchers.IO) {
+                        checkPayments()
+                    }
+                }
+            }
         }
     }
 }

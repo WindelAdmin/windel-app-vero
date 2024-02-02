@@ -1,4 +1,4 @@
-package br.com.windel.pos.data
+package br.com.windel.pos.data.entities
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

@@ -5,9 +5,9 @@ import android.content.Context
 import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContract
 import br.com.windel.pos.Utils
-import br.com.windel.pos.data.DataPayment
-import br.com.windel.pos.data.DataPaymentResponse
-import br.com.windel.pos.data.TransactionData
+import br.com.windel.pos.data.dtos.DataPayment
+import br.com.windel.pos.data.dtos.DataPaymentResponse
+import br.com.windel.pos.data.dtos.TransactionData
 import br.com.windel.pos.enums.EventsEnum.EVENT_CANCELED
 import br.com.windel.pos.enums.EventsEnum.EVENT_FAILED
 import br.com.windel.pos.enums.EventsEnum.EVENT_SUCCESS
