@@ -24,23 +24,20 @@ import br.com.windel.pos.data.dtos.DataPaymentResponse
 import br.com.windel.pos.data.dtos.TransactionData
 import br.com.windel.pos.data.entities.PaymentEntity
 import br.com.windel.pos.database.AppDatabase
-import br.com.windel.pos.enums.EndpointEnum.GATEWAY_VERO_ORDER
 import br.com.windel.pos.enums.ErrorEnum
 import br.com.windel.pos.enums.EventsEnum.EVENT_CANCELED
 import br.com.windel.pos.enums.EventsEnum.EVENT_SUCCESS
 import br.com.windel.pos.gateways.BasicAuthInterceptor
+import br.com.windel.pos.http.ApiService
 import com.airbnb.lottie.LottieAnimationView
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.FormBody
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import okhttp3.Response
 import java.io.IOException
 
@@ -56,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var paymentContract: ActivityResultLauncher<DataPayment>
     private lateinit var context: Context
     private var manualMode: Boolean = false
+    private val paymentService = ApiService()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_activity)
@@ -93,13 +91,42 @@ class MainActivity : AppCompatActivity() {
         connectivity.setProxy(true)
         connectivity.enable();
 
+
+
+
         checkModeManual()
 
         paymentContract = registerForActivityResult(PaymentContract()) { data ->
+
             if (checkInternetConnection()) {
                 data?.data?.terminalSerial = SERIAL
                 data?.data?.orderId = currentOrderId
-                sendResultPayment(data)
+
+                CoroutineScope(Dispatchers.Main).launch {
+                    withContext(Dispatchers.IO) {
+                        val response = if (data.status === EVENT_SUCCESS.value)
+                            paymentService.sendSuccessPayment(data)
+                        else if (data.status === EVENT_CANCELED.value)
+                            paymentService.sendCanceledPayment(currentOrderId)
+                        else
+                            paymentService.sendFailedPayment(
+                                data.data?.error.orEmpty(),
+                                currentOrderId
+                            )
+
+                        if (response !== null && response.isSuccessful) {
+                            if (!manualMode) checkPayments()
+                        } else {
+                            runOnUiThread {
+                                lblStatus.text = ErrorEnum.SERVER_ERROR.value
+                                lblStatus.setTextColor(Color.parseColor("#a31a1a"))
+                            }
+                            if (!manualMode) checkPayments()
+                        }
+
+                        response?.close()
+                    }
+                }
             } else {
                 saveOnDatabase(data)
             }
@@ -121,38 +148,24 @@ class MainActivity : AppCompatActivity() {
             layoutParams.height = 350
             lottieAnimationView.layoutParams = layoutParams
             lblStatus.text = ""
+            lblStatus.setTextColor(Color.parseColor("#373737"))
         }
     }
 
     private fun checkPayments() {
+
         Thread.sleep(3000)
 
         if (checkInternetConnection()) {
-            val request = Request.Builder()
-                .url("${BuildConfig.WINDEL_POS_HOST}/gateway-vero/terminal/${SERIAL}")
-                .build()
-
-            httpClient.newCall(request).enqueue(object : Callback {
+            paymentService.findPayment(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
+                    if (!manualMode) checkPayments() else setLottieToManualModel()
                     e.printStackTrace()
                     call.cancel()
-                    runOnUiThread {
-                        lblStatus.text = ErrorEnum.SERVER_ERROR.value
-                        lblStatus.setTextColor(Color.parseColor("#a31a1a"))
-                    }
-                    if (!manualMode) checkPayments() else setLottieToManualModel()
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-
-                    runOnUiThread {
-                        if (!manualMode) {
-                            lblStatus.text = "Aguardando pedido de pagamento..."
-                            lblStatus.setTextColor(Color.parseColor("#373737"))
-                        }
-                    }
-
-                    if (!response.isSuccessful) throw IOException("Unexpected code $response")
+                    if (!response.isSuccessful) throw IOException ("Requisição mal sucedida: $response")
 
                     try {
                         if (response.body.contentLength() == 0L) {
@@ -164,29 +177,22 @@ class MainActivity : AppCompatActivity() {
 
                         val data = Gson().fromJson(response.body.string(), DataPayment::class.java)
 
+                        response.close()
+                        call.cancel()
+
                         currentOrderId = data.orderId
 
                         if (data.status == "processando") {
-                            response.close()
-                            call.cancel()
                             openPaymentProcessing(data)
                             return
                         }
 
-                        val transcationData = TransactionData()
-                        transcationData.terminalSerial = SERIAL
-                        transcationData.orderId = currentOrderId
+                        paymentService.sendProccessingPayment(data.orderId)
 
-                        val requestProcessing = Request.Builder()
-                            .url("${BuildConfig.WINDEL_POS_HOST}/gateway-vero/order/${data.orderId}/processing")
-                            .build()
+                        paymentContract.launch(data)
 
-                        response.close()
-                        call.cancel()
-                        httpClient.newCall(requestProcessing).execute().close()
-
-                        runBlocking {
-                            paymentContract.launch(data)
+                        if(manualMode) {
+                            setLottieToManualModel()
                         }
                     } catch (e: Exception) {
                         Log.e(this.javaClass.name, e.message.toString())
@@ -197,75 +203,9 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 lblStatus.text = ErrorEnum.CONNECTION_ERROR.value
                 lblStatus.setTextColor(Color.parseColor("#a31a1a"))
+                if (!manualMode) checkPayments() else setLottieToManualModel()
             }
-            if (!manualMode) checkPayments() else setLottieToManualModel()
         }
-    }
-
-    private fun sendResultPayment(dataPayment: DataPaymentResponse) {
-        try {
-            val request =
-                if (dataPayment.status === EVENT_SUCCESS.value)
-                    successRequestBuild(dataPayment)
-                else if (dataPayment.status === EVENT_CANCELED.value)
-                    canceledRequestBuild()
-                else
-                    failedRequestBuild(dataPayment.data?.error.orEmpty())
-
-            httpClient.newCall(request).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    if (!manualMode) checkPayments() else setLottieToManualModel()
-                    call.cancel()
-                    e.printStackTrace()
-                }
-
-                override fun onResponse(call: Call, response: Response) {
-                    response.close()
-                    call.cancel()
-                    if (!response.isSuccessful) {
-                        Log.e("Error: ", response.message)
-                    }
-                    if (!manualMode) checkPayments() else setLottieToManualModel()
-                }
-            })
-        } catch (e: IOException) {
-            Log.e(this.javaClass.name, e.message.toString())
-        }
-    }
-
-    private fun successRequestBuild(dataPayment: DataPaymentResponse): Request {
-        return Request.Builder()
-            .url("${GATEWAY_VERO_ORDER.value}/${dataPayment.data?.orderId}/payed")
-            .post(
-                FormBody.Builder()
-                    .add("terminalSerial", dataPayment.data?.terminalSerial.orEmpty())
-                    .add("flag", dataPayment.data?.flag.orEmpty())
-                    .add(
-                        "transactionType",
-                        dataPayment.data?.transactionType.orEmpty()
-                    )
-                    .add("authorization", dataPayment.data?.authorization.orEmpty())
-                    .add("nsu", dataPayment.data?.nsu.orEmpty())
-                    .add("orderId", dataPayment.data?.orderId.orEmpty())
-                    .build()
-            )
-            .build()
-    }
-
-    private fun canceledRequestBuild(): Request {
-        return Request.Builder()
-            .url("${GATEWAY_VERO_ORDER.value}/${currentOrderId}/canceled")
-            .build()
-    }
-
-    private fun failedRequestBuild(error: String): Request {
-        return Request.Builder()
-            .url("${GATEWAY_VERO_ORDER.value}/${currentOrderId}/failed")
-            .post(
-                FormBody.Builder().add("error", error)
-                    .build()
-            )
-            .build()
     }
 
     private suspend fun assertPayment() {
@@ -293,29 +233,18 @@ class MainActivity : AppCompatActivity() {
                         )
                     )
 
-                    val request =
-                        if (data.status === EVENT_SUCCESS.value)
-                            successRequestBuild(data)
-                        else if (data.status === EVENT_CANCELED.value)
-                            canceledRequestBuild()
-                        else
-                            failedRequestBuild(data.data?.error.orEmpty())
+                    val response = if (data.status === EVENT_SUCCESS.value)
+                        paymentService.sendSuccessPayment(data)
+                    else if (data.status === EVENT_CANCELED.value)
+                        paymentService.sendCanceledPayment(currentOrderId)
+                    else
+                        paymentService.sendFailedPayment(data.data?.error.orEmpty(), currentOrderId)
 
-                    httpClient.newCall(request).enqueue(object : Callback {
-                        override fun onFailure(call: Call, e: IOException) {
-                            call.cancel()
-                            e.printStackTrace()
-                        }
+                    if (response !== null && response.isSuccessful) {
+                        if (!manualMode) checkPayments() else setLottieToManualModel()
+                    }
 
-                        override fun onResponse(call: Call, response: Response) {
-                            response.close()
-                            call.cancel()
-                            if (!response.isSuccessful) {
-                                Log.e("Error: ", response.message)
-                            }
-                        }
-                    })
-
+                    response?.close()
                     db.paymentDao().delete(it)
                 }
             }
@@ -374,12 +303,9 @@ class MainActivity : AppCompatActivity() {
             builder.setTitle("Ops!")
             builder.setMessage("Você possui um pagamento em aberto, o que deseja fazer?")
             builder.setPositiveButton("Refazer Pagamento") { dialog, which ->
-                setLottieToManualModel()
-                val transcationData = TransactionData()
-                transcationData.terminalSerial = SERIAL
-                transcationData.orderId = currentOrderId
                 paymentContract.launch(data)
             }
+
             builder.setNegativeButton("Cancelar") { dialog, which ->
                 dialog.cancel()
 
@@ -388,26 +314,22 @@ class MainActivity : AppCompatActivity() {
                 progressDialog?.setCancelable(false)
                 progressDialog?.show()
 
-                val request = canceledRequestBuild()
+                try {
 
-                httpClient.newCall(request).enqueue(object : Callback {
-                    override fun onFailure(call: Call, e: IOException) {
-                        progressDialog.cancel()
-                        call.cancel()
-                        e.printStackTrace()
-                        checkPayments()
-                    }
+                    CoroutineScope(Dispatchers.Main).launch {
+                        withContext(Dispatchers.IO) {
+                           val response =  paymentService.sendCanceledPayment(currentOrderId)
 
-                    override fun onResponse(call: Call, response: Response) {
-                        response.close()
-                        call.cancel()
-                        progressDialog.cancel()
-                        if (!response.isSuccessful) {
-                            throw IOException("Error: $response")
+                            if(response !== null && response.isSuccessful) {
+                                if (!manualMode) checkPayments() else setLottieToManualModel()
+                            }
+
+                            progressDialog.dismiss()
                         }
-                        if (!manualMode) checkPayments() else setLottieToManualModel()
                     }
-                })
+                }  catch (e: Exception) {
+                    Log.e(this.javaClass.name, e.message.toString())
+                }
             }
 
             val alertDialog: AlertDialog = builder.create()
@@ -435,7 +357,7 @@ class MainActivity : AppCompatActivity() {
                 lblStatus.text = "Aguardando pedido de pagamento..."
             }
 
-            checkPayments();
+            checkPayments()
         } else {
             runOnUiThread {
                 lblStatus.text = ""
@@ -447,6 +369,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             lottieAnimationView.setOnClickListener {
+
                 runOnUiThread {
                     lottieAnimationView.setAnimation(R.raw.sync_loading)
                     lottieAnimationView.playAnimation()

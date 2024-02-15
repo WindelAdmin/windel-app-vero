@@ -3,9 +3,9 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp") version "1.8.10-1.0.9" apply true}
 
-val apiHostProd = "http://windelweb.windel.com.br"
+val apiHostProd = "https://winpay-prod.windel.com.br"
 val portProd = "3333"
-val apiHostHml = "http://homologacao.windel.com.br"
+val apiHostHml = "https://winpay-develop.windel.com.br"
 val portHml = "3002"
 val apiHostDev = "http://192.168.1.82"
 val portDev = "3334"
@@ -39,7 +39,7 @@ android {
             buildConfigField("String", "WINDEL_POS_API_KEY", "\"$apiKey\"")
         }
         debug {
-            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiHostHml:$portHml\"")
+            buildConfigField("String", "WINDEL_POS_HOST", "\"$apiHostHml\"")
             buildConfigField("String", "WINDEL_POS_API_KEY", "\"$apiKey\"")
         }
     }
