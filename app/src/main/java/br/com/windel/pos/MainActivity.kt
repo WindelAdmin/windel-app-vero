@@ -27,17 +27,16 @@ import br.com.windel.pos.database.AppDatabase
 import br.com.windel.pos.enums.ErrorEnum
 import br.com.windel.pos.enums.EventsEnum.EVENT_CANCELED
 import br.com.windel.pos.enums.EventsEnum.EVENT_SUCCESS
-import br.com.windel.pos.gateways.BasicAuthInterceptor
 import br.com.windel.pos.http.ApiService
 import com.airbnb.lottie.LottieAnimationView
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.OkHttpClient
 import okhttp3.Response
 import java.io.IOException
 
@@ -47,18 +46,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var lblStatus: TextView
     private lateinit var currentOrderId: String
     private lateinit var lottieAnimationView: LottieAnimationView
-    private var httpClient = OkHttpClient.Builder()
-        .addInterceptor(BasicAuthInterceptor("d2luZGVsdXNlcg==", "dzFuZDNsQEAyMzIw")).build()
 
     private lateinit var paymentContract: ActivityResultLauncher<DataPayment>
     private lateinit var context: Context
     private var manualMode: Boolean = false
     private val paymentService = ApiService()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_activity)
         supportActionBar?.hide()
-        httpClient.dispatcher.maxRequests = 1
 
         window.setFlags(
             FLAG_FULLSCREEN,
@@ -91,10 +88,9 @@ class MainActivity : AppCompatActivity() {
         connectivity.setProxy(true)
         connectivity.enable();
 
-
-
-
         checkModeManual()
+
+        checkProccessingPayment()
 
         paymentContract = registerForActivityResult(PaymentContract()) { data ->
 
@@ -102,31 +98,27 @@ class MainActivity : AppCompatActivity() {
                 data?.data?.terminalSerial = SERIAL
                 data?.data?.orderId = currentOrderId
 
-                CoroutineScope(Dispatchers.Main).launch {
-                    withContext(Dispatchers.IO) {
-                        val response = if (data.status === EVENT_SUCCESS.value)
-                            paymentService.sendSuccessPayment(data)
-                        else if (data.status === EVENT_CANCELED.value)
-                            paymentService.sendCanceledPayment(currentOrderId)
-                        else
-                            paymentService.sendFailedPayment(
-                                data.data?.error.orEmpty(),
-                                currentOrderId
-                            )
-
-                        if (response !== null && response.isSuccessful) {
-                            if (!manualMode) checkPayments()
-                        } else {
-                            runOnUiThread {
-                                lblStatus.text = ErrorEnum.SERVER_ERROR.value
-                                lblStatus.setTextColor(Color.parseColor("#a31a1a"))
-                            }
-                            if (!manualMode) checkPayments()
+                if (data.status === EVENT_SUCCESS.value)
+                    paymentService.sendSuccessPayment(data, { recallRequest() }, {
+                        setLottieErrorRequest()
+                        recallRequest()
+                    })
+                else if (data.status === EVENT_CANCELED.value)
+                    paymentService.sendCanceledPayment(currentOrderId, {
+                        recallRequest()
+                    }, {
+                        setLottieServerError()
+                        recallRequest()
+                    })
+                else
+                    paymentService.sendFailedPayment(
+                        data.data?.error.orEmpty(),
+                        currentOrderId,
+                        { recallRequestOrSetAnimation() }, {
+                            setLottieErrorRequest()
+                            recallRequest()
                         }
-
-                        response?.close()
-                    }
-                }
+                    )
             } else {
                 saveOnDatabase(data)
             }
@@ -139,75 +131,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setLottieToManualModel() {
-        runOnUiThread {
-            val layoutParams = lottieAnimationView.layoutParams
-            lottieAnimationView.setAnimation(R.raw.sync_idle)
-            lottieAnimationView.playAnimation()
-            layoutParams.width = 350
-            layoutParams.height = 350
-            lottieAnimationView.layoutParams = layoutParams
-            lblStatus.text = ""
-            lblStatus.setTextColor(Color.parseColor("#373737"))
-        }
-    }
-
-    private fun checkPayments() {
-
-        Thread.sleep(3000)
-
-        if (checkInternetConnection()) {
-            paymentService.findPayment(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    if (!manualMode) checkPayments() else setLottieToManualModel()
-                    e.printStackTrace()
-                    call.cancel()
-                }
-
-                override fun onResponse(call: Call, response: Response) {
-                    if (!response.isSuccessful) throw IOException ("Requisição mal sucedida: $response")
-
-                    try {
-                        if (response.body.contentLength() == 0L) {
-                            response.close()
-                            call.cancel()
-                            if (!manualMode) checkPayments() else setLottieToManualModel()
-                            return
-                        }
-
-                        val data = Gson().fromJson(response.body.string(), DataPayment::class.java)
-
-                        response.close()
-                        call.cancel()
-
-                        currentOrderId = data.orderId
-
-                        if (data.status == "processando") {
-                            openPaymentProcessing(data)
-                            return
-                        }
-
-                        paymentService.sendProccessingPayment(data.orderId)
-
-                        paymentContract.launch(data)
-
-                        if(manualMode) {
-                            setLottieToManualModel()
-                        }
-                    } catch (e: Exception) {
-                        Log.e(this.javaClass.name, e.message.toString())
-                    }
-                }
-            })
-        } else {
-            runOnUiThread {
-                lblStatus.text = ErrorEnum.CONNECTION_ERROR.value
-                lblStatus.setTextColor(Color.parseColor("#a31a1a"))
-                if (!manualMode) checkPayments() else setLottieToManualModel()
-            }
-        }
-    }
-
+    //STORAGE LOCAL
     private suspend fun assertPayment() {
         try {
             val db = Room.databaseBuilder(
@@ -233,18 +157,29 @@ class MainActivity : AppCompatActivity() {
                         )
                     )
 
-                    val response = if (data.status === EVENT_SUCCESS.value)
-                        paymentService.sendSuccessPayment(data)
+                    if (data.status === EVENT_SUCCESS.value)
+                        paymentService.sendSuccessPayment(data, { recallRequestOrSetAnimation() }, {
+                            setLottieErrorRequest()
+                            recallRequestOrSetAnimation()
+                        })
                     else if (data.status === EVENT_CANCELED.value)
-                        paymentService.sendCanceledPayment(currentOrderId)
+                        paymentService.sendCanceledPayment(
+                            currentOrderId,
+                            { recallRequestOrSetAnimation() },
+                            {
+                                setLottieErrorRequest()
+                                recallRequestOrSetAnimation()
+                            })
                     else
-                        paymentService.sendFailedPayment(data.data?.error.orEmpty(), currentOrderId)
+                        paymentService.sendFailedPayment(
+                            data.data?.error.orEmpty(),
+                            currentOrderId,
+                            { recallRequestOrSetAnimation() },
+                            {
+                                setLottieErrorRequest()
+                                recallRequestOrSetAnimation()
+                            })
 
-                    if (response !== null && response.isSuccessful) {
-                        if (!manualMode) checkPayments() else setLottieToManualModel()
-                    }
-
-                    response?.close()
                     db.paymentDao().delete(it)
                 }
             }
@@ -255,7 +190,6 @@ class MainActivity : AppCompatActivity() {
             Log.e(this.javaClass.name, e.message.toString())
         }
     }
-
     private fun saveOnDatabase(data: DataPaymentResponse) {
 
         val db = Room.databaseBuilder(
@@ -289,6 +223,99 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    //HTTP AND CONNECTION
+    private fun checkPayments() {
+
+        Thread.sleep(3000)
+
+        if (checkInternetConnection()) {
+
+            paymentService.findPayment(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    recallRequestOrSetAnimation()
+                    e.printStackTrace()
+                    call.cancel()
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    if (!response.isSuccessful) throw IOException("Requisição mal sucedida: $response")
+
+                    try {
+                        if (response.body.contentLength() == 0L) {
+                            response.close()
+                            call.cancel()
+                            recallRequestOrSetAnimation()
+                            return
+                        }
+
+                        val data = Gson().fromJson(response.body.string(), DataPayment::class.java)
+
+                        response.close()
+                        call.cancel()
+
+                        currentOrderId = data.orderId
+
+                        paymentService.sendProccessingPayment(data.orderId)
+
+                        if (manualMode) {
+                            setLottieToManualModel()
+                        }
+
+                        runBlocking {
+                            paymentContract.launch(data)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(this.javaClass.name, e.message.toString())
+                    }
+                }
+            })
+        } else {
+            runOnUiThread {
+                lblStatus.text = ErrorEnum.CONNECTION_ERROR.value
+                lblStatus.setTextColor(Color.parseColor("#a31a1a"))
+                if (!manualMode) checkPayments() else setLottieToManualModel()
+            }
+        }
+    }
+
+    private fun checkProccessingPayment() {
+        paymentService.findPaymentProcessing(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                recallRequest()
+                e.printStackTrace()
+                call.cancel()
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    if (response.body.contentLength() == 0L) {
+                        response.close()
+                        call.cancel()
+                        recallRequest()
+                        return
+                    }
+
+                    val data = Gson().fromJson(response.body.string(), DataPayment::class.java)
+
+                    currentOrderId = data.orderId
+
+                    openPaymentProcessing(data)
+                } catch (e: Exception) {
+                    Log.e(this.javaClass.name, e.message.toString())
+                }
+            }
+        })
+    }
+
+    //CONTROL UI AND FLOW
+    private fun recallRequestOrSetAnimation() {
+        if (!manualMode) checkPayments() else setLottieToManualModel()
+    }
+
+    private fun recallRequest() {
+        if (!manualMode) checkPayments()
+    }
+
     private fun checkInternetConnection(): Boolean {
         val connectivityManager =
             getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -310,24 +337,22 @@ class MainActivity : AppCompatActivity() {
                 dialog.cancel()
 
                 val progressDialog = ProgressDialog(context)
-                progressDialog?.setMessage("Loading...")
+                progressDialog?.setMessage("Cancelando pagamento..")
                 progressDialog?.setCancelable(false)
                 progressDialog?.show()
 
                 try {
 
-                    CoroutineScope(Dispatchers.Main).launch {
-                        withContext(Dispatchers.IO) {
-                           val response =  paymentService.sendCanceledPayment(currentOrderId)
-
-                            if(response !== null && response.isSuccessful) {
-                                if (!manualMode) checkPayments() else setLottieToManualModel()
-                            }
-
+                    paymentService.sendCanceledPayment(
+                        data.orderId,
+                        {
                             progressDialog.dismiss()
-                        }
-                    }
-                }  catch (e: Exception) {
+                            recallRequest()
+                        }, {
+                            setLottieErrorRequest()
+                            recallRequest()
+                        })
+                } catch (e: Exception) {
                     Log.e(this.javaClass.name, e.message.toString())
                 }
             }
@@ -340,11 +365,14 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         checkModeManual()
+        recallRequest()
     }
 
-    fun checkModeManual() {
+    //UI
+    private fun checkModeManual() {
         val sharedPreferences = getSharedPreferences("windelConfig", Context.MODE_PRIVATE)
         manualMode = sharedPreferences.getBoolean("manualMode", false)
+
         val layoutParams = lottieAnimationView.layoutParams
 
         if (!manualMode) {
@@ -356,8 +384,6 @@ class MainActivity : AppCompatActivity() {
                 lottieAnimationView.layoutParams = layoutParams
                 lblStatus.text = "Aguardando pedido de pagamento..."
             }
-
-            checkPayments()
         } else {
             runOnUiThread {
                 lblStatus.text = ""
@@ -382,6 +408,33 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun setLottieToManualModel() {
+        runOnUiThread {
+            val layoutParams = lottieAnimationView.layoutParams
+            lottieAnimationView.setAnimation(R.raw.sync_idle)
+            lottieAnimationView.playAnimation()
+            layoutParams.width = 350
+            layoutParams.height = 350
+            lottieAnimationView.layoutParams = layoutParams
+            lblStatus.text = ""
+            lblStatus.setTextColor(Color.parseColor("#373737"))
+        }
+    }
+
+    private fun setLottieServerError() {
+        runOnUiThread {
+            lblStatus.text = ErrorEnum.SERVER_ERROR.value
+            lblStatus.setTextColor(Color.parseColor("#a31a1a"))
+        }
+    }
+
+    private fun setLottieErrorRequest() {
+        runOnUiThread {
+            lblStatus.text = "Houve algum erro na requisição."
+            lblStatus.setTextColor(Color.parseColor("#a31a1a"))
         }
     }
 }

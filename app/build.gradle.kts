@@ -37,10 +37,14 @@ android {
         release {
             buildConfigField("String", "WINDEL_POS_HOST", "\"$apiHostProd:$portProd\"")
             buildConfigField("String", "WINDEL_POS_API_KEY", "\"$apiKey\"")
+            buildConfigField("String", "WINDEL_POS_AUTH_USER", "d2luZGVsdXNlcg==")
+            buildConfigField("String", "WINDEL_POS_AUTH_PASS", "dzFuZDNsQEAyMzIw")
         }
         debug {
             buildConfigField("String", "WINDEL_POS_HOST", "\"$apiHostHml\"")
             buildConfigField("String", "WINDEL_POS_API_KEY", "\"$apiKey\"")
+            buildConfigField("String", "WINDEL_POS_AUTH_USER", "\"d2luZGVsdXNlcg==\"")
+            buildConfigField("String", "WINDEL_POS_AUTH_PASS", "\"dzFuZDNsQEAyMzIw\"")
         }
     }
     compileOptions {

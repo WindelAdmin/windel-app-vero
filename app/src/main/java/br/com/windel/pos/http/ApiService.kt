@@ -6,6 +6,7 @@ import br.com.windel.pos.BuildConfig
 import br.com.windel.pos.data.dtos.DataPaymentResponse
 import br.com.windel.pos.enums.EndpointEnum
 import br.com.windel.pos.gateways.BasicAuthInterceptor
+import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
@@ -15,11 +16,23 @@ import java.io.IOException
 
 class ApiService {
     private var httpClient = OkHttpClient.Builder()
-        .addInterceptor(BasicAuthInterceptor("d2luZGVsdXNlcg==", "dzFuZDNsQEAyMzIw")).build()
+        .addInterceptor(BasicAuthInterceptor(BuildConfig.WINDEL_POS_AUTH_USER, BuildConfig.WINDEL_POS_AUTH_PASS)).build()
 
     fun findPayment(callback: Callback) {
         val request = Request.Builder()
             .url("${BuildConfig.WINDEL_POS_HOST}/gateway-vero/terminal/${Build.SERIAL}")
+            .build()
+
+        try {
+            httpClient.newCall(request).enqueue(callback)
+        } catch (e: Exception) {
+            Log.e(this.javaClass.name, e.message.toString())
+        }
+    }
+
+    fun findPaymentProcessing(callback: Callback) {
+        val request = Request.Builder()
+            .url("${BuildConfig.WINDEL_POS_HOST}/gateway-vero/terminal/processing/${Build.SERIAL}")
             .build()
 
         try {
@@ -35,14 +48,14 @@ class ApiService {
                 .url("${BuildConfig.WINDEL_POS_HOST}/gateway-vero/order/${orderId}/processing")
                 .build()
 
-            httpClient.newCall(requestProcessing).execute()
+            executeRequest(requestProcessing, {}, {})
         } catch (e: IOException) {
             Log.e(this.javaClass.name, e.message.toString())
         }
 
     }
 
-    fun sendSuccessPayment(dataPayment: DataPaymentResponse): Response? {
+    fun sendSuccessPayment(dataPayment: DataPaymentResponse, onSuccess: () -> Unit, onFailed: () -> Unit) {
         try {
             val request = Request.Builder()
                 .url("${EndpointEnum.GATEWAY_VERO_ORDER.value}/${dataPayment.data?.orderId}/payed")
@@ -61,27 +74,25 @@ class ApiService {
                 )
                 .build()
 
-            return httpClient.newCall(request).execute()
+            executeRequest(request, onSuccess, onFailed)
         } catch (e: IOException) {
             Log.e(this.javaClass.name, e.message.toString())
-            return null
         }
     }
 
-     fun sendCanceledPayment(orderId: String): Response? {
+     fun sendCanceledPayment(orderId: String, onSuccess: () -> Unit, onFailed: () -> Unit){
         try {
             val request = Request.Builder()
                 .url("${EndpointEnum.GATEWAY_VERO_ORDER.value}/${orderId}/canceled")
                 .build()
 
-            return httpClient.newCall(request).execute()
+            executeRequest(request, onSuccess, onFailed)
         } catch (e: IOException) {
             Log.e(this.javaClass.name, e.message.toString())
-            return null
         }
     }
 
-     fun sendFailedPayment(error: String, orderId: String): Response? {
+     fun sendFailedPayment(error: String, orderId: String, onSuccess: () -> Unit, onFailed: () -> Unit){
         try {
             val request = Request.Builder()
                 .url("${EndpointEnum.GATEWAY_VERO_ORDER.value}/${orderId}/failed")
@@ -91,10 +102,27 @@ class ApiService {
                 )
                 .build()
 
-            return httpClient.newCall(request).execute()
+            executeRequest(request, onSuccess, onFailed)
         } catch (e: IOException) {
             Log.e(this.javaClass.name, e.message.toString())
-            return null
         }
+    }
+
+    private fun executeRequest(request: Request, onSuccess:  () -> Unit, onFailed: () -> Unit) {
+        httpClient.newCall(request).enqueue( object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                onFailed()
+                e.printStackTrace()
+                call.cancel()
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if(response.isSuccessful) {
+                    onSuccess()
+                } else {
+                    throw IOException("Requisição não foi bem sucedida: $response")
+                }
+                response.close()
+            }})
     }
 }
