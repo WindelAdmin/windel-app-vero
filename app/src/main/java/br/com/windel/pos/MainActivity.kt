@@ -93,6 +93,9 @@ class MainActivity : AppCompatActivity() {
         checkProccessingPayment()
 
         paymentContract = registerForActivityResult(PaymentContract()) { data ->
+            if (manualMode) {
+                setLottieToManualModel()
+            }
 
             if (checkInternetConnection()) {
                 data?.data?.terminalSerial = SERIAL
@@ -244,6 +247,7 @@ class MainActivity : AppCompatActivity() {
                         if (response.body.contentLength() == 0L) {
                             response.close()
                             call.cancel()
+                            openDialogPaymentNotFound()
                             recallRequestOrSetAnimation()
                             return
                         }
@@ -256,10 +260,6 @@ class MainActivity : AppCompatActivity() {
                         currentOrderId = data.orderId
 
                         paymentService.sendProccessingPayment(data.orderId)
-
-                        if (manualMode) {
-                            setLottieToManualModel()
-                        }
 
                         runBlocking {
                             paymentContract.launch(data)
@@ -299,7 +299,7 @@ class MainActivity : AppCompatActivity() {
 
                     currentOrderId = data.orderId
 
-                    openPaymentProcessing(data)
+                    openDialogPaymentProcessing(data)
                 } catch (e: Exception) {
                     Log.e(this.javaClass.name, e.message.toString())
                 }
@@ -323,7 +323,7 @@ class MainActivity : AppCompatActivity() {
         return networkInfo != null && networkInfo.isConnected
     }
 
-    private fun openPaymentProcessing(data: DataPayment) {
+    private fun openDialogPaymentProcessing(data: DataPayment) {
         runOnUiThread {
             val builder = AlertDialog.Builder(context)
             builder.setCancelable(false)
@@ -359,6 +359,20 @@ class MainActivity : AppCompatActivity() {
 
             val alertDialog: AlertDialog = builder.create()
             alertDialog.show()
+        }
+    }
+
+    private fun openDialogPaymentNotFound() {
+        runOnUiThread {
+            val builder = AlertDialog.Builder(context)
+            builder.setCancelable(false)
+            builder.setTitle("Ops!")
+            builder.setMessage("Nenhum pedido de pagamento encontrado.")
+            builder.setPositiveButton("Ok") { dialog, which ->
+                dialog.dismiss()
+            }
+
+            builder.show()
         }
     }
 
