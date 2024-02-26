@@ -193,6 +193,7 @@ class MainActivity : AppCompatActivity() {
             Log.e(this.javaClass.name, e.message.toString())
         }
     }
+
     private fun saveOnDatabase(data: DataPaymentResponse) {
 
         val db = Room.databaseBuilder(
@@ -247,7 +248,7 @@ class MainActivity : AppCompatActivity() {
                         if (response.body.contentLength() == 0L) {
                             response.close()
                             call.cancel()
-                            openDialogPaymentNotFound()
+                            if (manualMode) openDialogPaymentNotFound()
                             recallRequestOrSetAnimation()
                             return
                         }
@@ -342,17 +343,18 @@ class MainActivity : AppCompatActivity() {
                 progressDialog?.show()
 
                 try {
-
                     paymentService.sendCanceledPayment(
                         data.orderId,
                         {
                             progressDialog.dismiss()
                             recallRequest()
                         }, {
+                            progressDialog.dismiss()
                             setLottieErrorRequest()
                             recallRequest()
                         })
                 } catch (e: Exception) {
+                    progressDialog.dismiss()
                     Log.e(this.javaClass.name, e.message.toString())
                 }
             }
